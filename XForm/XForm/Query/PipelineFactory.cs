@@ -13,6 +13,14 @@ namespace XForm
 {
     public class PipelineFactory
     {
+        static BuildStageFactory Factories { get; }
+
+        static PipelineFactory()
+        {
+            Factories = new BuildStageFactory(
+                new QueryRead()
+            );
+        }
         public static IDataBatchEnumerator BuildPipeline(string configurationSet)
         {
             IDataBatchEnumerator pipeline = null;
@@ -34,16 +42,7 @@ namespace XForm
             switch(verb)
             {
                 case "read":
-                    if (source != null) throw new ArgumentException("'read' must be the first stage in a pipeline.");
-                    if (configurationParts.Count != 2) throw new ArgumentException("Usage: 'read' [filePath]");
-                    if (configurationParts[1].EndsWith("xform"))
-                    {
-                        return new BinaryTableReader(configurationParts[1]);
-                    }
-                    else
-                    {
-                        return new TabularFileReader(configurationParts[1]);
-                    }
+                    return Factories.QueryAction(verb).CreateBuildStage(source, configurationParts);
                 case "schema":
                     if (configurationParts.Count != 1) throw new ArgumentException("Usage: 'schema'");
                     return new SchemaTransformer(source);
