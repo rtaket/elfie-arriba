@@ -51,7 +51,10 @@
   <ItemGroup>
     <Compile Include="Aggregators\CountAggregator.cs" />
     <Compile Include="BackgroundWebServer.cs" />
+    <Compile Include="Commands\String8Transform.cs" />
     <Compile Include="Commands\RenameColumns.cs" />
+    <Compile Include="Commands\Transformers\CosmosNullToEmptyTransformer.cs" />
+    <Compile Include="Commands\Transformers\IColumnValueTransformer.cs" />
     <Compile Include="Context\IWorkflowRunner.cs" />
     <Compile Include="Context\SingleFileRunner.cs" />
     <Compile Include="Data\Allocator.cs" />
