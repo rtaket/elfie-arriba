@@ -11,6 +11,9 @@ using XForm.Query;
 
 namespace XForm.Commands
 {
+    /// <summary>
+    /// Runs a conversion function on a String8 column to produce a result column
+    /// </summary>
     internal class String8TransformCommandBuilder : IPipelineStageBuilder
     {
         public IEnumerable<string> Verbs => new string[] { "string8transform" };
@@ -24,6 +27,10 @@ namespace XForm.Commands
             if (transformName.Equals("cosmosnulltoempty", StringComparison.OrdinalIgnoreCase))
             {
                 transformer = new CosmosNullToEmptyTransformer();
+            }
+            else if (transformName.Equals("trimtoupper", StringComparison.OrdinalIgnoreCase))
+            {
+                transformer = new TrimToUpperTransformer();
             }
             else
             {
