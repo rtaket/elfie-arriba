@@ -15,12 +15,14 @@ using XForm.Extensions;
 using XForm.IO;
 using XForm.IO.StreamProvider;
 using XForm.Query;
+using Elfie.Test;
 
 namespace XForm.Test
 {
     [TestClass]
     public class SampleDatabase
     {
+        private static object s_locker = new object();
         private static string s_RootPath;
         private static WorkflowContext s_WorkflowContext;
 
@@ -40,7 +42,10 @@ namespace XForm.Test
 
         public static void EnsureBuilt()
         {
-            if (s_RootPath == null || !Directory.Exists(s_RootPath)) Build();
+            lock (s_locker)
+            {
+                if (s_RootPath == null || !Directory.Exists(s_RootPath)) Build();
+            }
         }
 
         public static void Build()
@@ -49,12 +54,17 @@ namespace XForm.Test
             DirectoryIO.DeleteAllContents(s_RootPath);
 
             // Unpack the sample database
-            ZipFile.ExtractToDirectory("Database.zip", s_RootPath);
+            ZipFile.ExtractToDirectory("SampleDatabase.zip", s_RootPath);
 
             // XForm add each source
             foreach (string filePath in Directory.GetFiles(Path.Combine(s_RootPath, "_Raw")))
             {
                 Add(filePath);
+            }
+
+            foreach (string folderPath in Directory.GetDirectories(Path.Combine(s_RootPath, "_Raw")))
+            {
+                Add(folderPath);
             }
 
             // Add the sample configs and queries
@@ -67,25 +77,26 @@ namespace XForm.Test
             string fileName = Path.GetFileName(filePath);
             string[] fileNameParts = fileName.Split('.');
             string tableName = fileNameParts[0];
-            DateTime asOfDateTime = DateTime.ParseExact(fileNameParts[1], "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            string sourceType = fileNameParts[1];
+            DateTime asOfDateTime = DateTime.ParseExact(fileNameParts[2], "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
 
-            XForm($@"add ""{filePath}"" ""{tableName}"" Full ""{asOfDateTime}""");
-            string expectedPath = Path.Combine(s_RootPath, "Source", tableName, "Full", asOfDateTime.ToString(StreamProviderExtensions.DateTimeFolderFormat), fileName);
-            Assert.IsTrue(File.Exists(expectedPath), $"XForm add didn't add to expected location {expectedPath}");
+            XForm($@"add ""{filePath}"" ""{tableName}"" {sourceType} ""{asOfDateTime}""");
+            string expectedPath = Path.Combine(s_RootPath, "Source", tableName, sourceType, asOfDateTime.ToString(StreamProviderExtensions.DateTimeFolderFormat));
+            Assert.IsTrue(Directory.Exists(expectedPath), $"XForm add didn't add to expected location {expectedPath}");
         }
 
         public static void XForm(string xformCommand, int expectedExitCode = 0, WorkflowContext context = null)
         {
-            if (context == null) context = SampleDatabase.WorkflowContext;
+            if (context == null)
+            {
+                context = SampleDatabase.WorkflowContext;
+                
+                // Ensure the as-of DateTime is reset for each operation
+                context.RequestedAsOfDateTime = DateTime.UtcNow;
+            }
+
             int result = Program.Run(new PipelineScanner(xformCommand).CurrentLineParts.ToArray(), context);
             Assert.AreEqual(expectedExitCode, result, $"Unexpected Exit Code for XForm {xformCommand}");
-        }
-
-        [TestMethod]
-        public void Database_Build()
-        {
-            // Unpack the Database. Verify 'xform add' works for each source
-            SampleDatabase.Build();
         }
 
         [TestMethod]
@@ -113,15 +124,31 @@ namespace XForm.Test
             XForm($"build WebRequest xform \"{cutoff:yyyy-MM-dd hh:mm:ssZ}");
 
             // Verify it has been created
-            DateTime versionFound = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebRequest", cutoff).WhenModifiedUtc;
+            DateTime versionFound = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebRequest", CrawlType.Full, cutoff).WhenModifiedUtc;
             Assert.AreEqual(new DateTime(2017, 12, 02, 00, 00, 00, DateTimeKind.Utc), versionFound);
 
             // Ask for WebRequest.Authenticated. Verify a 2017-12-02 version is also built for it
             XForm($"build WebRequest.Authenticated xform \"{cutoff:yyyy-MM-dd hh:mm:ssZ}");
 
             // Verify it has been created
-            versionFound = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebRequest.Authenticated", cutoff).WhenModifiedUtc;
+            versionFound = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebRequest.Authenticated", CrawlType.Full, cutoff).WhenModifiedUtc;
             Assert.AreEqual(new DateTime(2017, 12, 02, 00, 00, 00, DateTimeKind.Utc), versionFound);
+        }
+
+        [TestMethod]
+        public void Database_ReadRange()
+        {
+            SampleDatabase.EnsureBuilt();
+
+            // Asking for 2d from 2017-12-04 should get 2017-12-03 and 2017-12-02 crawls
+            WorkflowContext historicalContext = new WorkflowContext(SampleDatabase.WorkflowContext) { RequestedAsOfDateTime = new DateTime(2017, 12, 04, 00, 00, 00, DateTimeKind.Utc) };
+            Assert.AreEqual(2000, PipelineParser.BuildPipeline("readRange 2d WebRequest", null, historicalContext).RunAndDispose());
+
+            // Asking for 3d should get all three crawls
+            Assert.AreEqual(3000, PipelineParser.BuildPipeline("readRange 3d WebRequest", null, historicalContext).RunAndDispose());
+
+            // Asking for 4d should error (no version for the range start)
+            Verify.Exception<UsageException>(() => PipelineParser.BuildPipeline("readRange 4d WebRequest", null, historicalContext).RunAndDispose());
         }
 
         [TestMethod]
@@ -132,14 +159,14 @@ namespace XForm.Test
 
             // Build WebRequest.tsv. Verify it's a 2017-12-03 version. Verify the TSV is found
             XForm($"build WebRequest tsv");
-            latestReport = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Report, "WebRequest", DateTime.UtcNow);
+            latestReport = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Report, "WebRequest", CrawlType.Full, DateTime.UtcNow);
             Assert.AreEqual(new DateTime(2017, 12, 03, 00, 00, 00, DateTimeKind.Utc), latestReport.WhenModifiedUtc);
             Assert.IsTrue(SampleDatabase.WorkflowContext.StreamProvider.Attributes(Path.Combine(latestReport.Path, "Report.tsv")).Exists);
 
             // Ask for a 2017-12-02 report. Verify 2017-12-02 version is created
             DateTime cutoff = new DateTime(2017, 12, 02, 11, 50, 00, DateTimeKind.Utc);
             XForm($"build WebRequest tsv \"{cutoff:yyyy-MM-dd hh:mm:ssZ}");
-            latestReport = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Report, "WebRequest", cutoff);
+            latestReport = SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Report, "WebRequest", CrawlType.Full, cutoff);
             Assert.AreEqual(new DateTime(2017, 12, 02, 00, 00, 00, DateTimeKind.Utc), latestReport.WhenModifiedUtc);
             Assert.IsTrue(SampleDatabase.WorkflowContext.StreamProvider.Attributes(Path.Combine(latestReport.Path, "Report.tsv")).Exists);
         }
@@ -187,6 +214,32 @@ namespace XForm.Test
         }
 
         [TestMethod]
+        public void Database_IncrementalSources()
+        {
+            SampleDatabase.EnsureBuilt();
+
+            WorkflowContext reportContext = new WorkflowContext(SampleDatabase.WorkflowContext);
+
+            // Build WebServer as of 2017-11-25; should have 86 original rows, verify built copy cached
+            reportContext.NewestDependency = DateTime.MinValue;
+            reportContext.RequestedAsOfDateTime = new DateTime(2017, 11, 25, 00, 00, 00, DateTimeKind.Utc);
+            Assert.AreEqual(86, SampleDatabase.WorkflowContext.Runner.Build("WebServer", reportContext).RunAndDispose());
+            Assert.AreEqual(new DateTime(2017, 11, 25, 00, 00, 00, DateTimeKind.Utc), SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebServer", CrawlType.Full, DateTime.UtcNow).WhenModifiedUtc);
+
+            // Build WebServer as of 2017-11-27; should have 91 rows (one incremental added)
+            reportContext.NewestDependency = DateTime.MinValue;
+            reportContext.RequestedAsOfDateTime = new DateTime(2017, 11, 27, 00, 00, 00, DateTimeKind.Utc);
+            Assert.AreEqual(91, SampleDatabase.WorkflowContext.Runner.Build("WebServer", reportContext).RunAndDispose());
+            Assert.AreEqual(new DateTime(2017, 11, 27, 00, 00, 00, DateTimeKind.Utc), SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebServer", CrawlType.Full, DateTime.UtcNow).WhenModifiedUtc);
+
+            // Build WebServer as of 2017-11-29; should have 96 rows (two incrementals added)
+            reportContext.NewestDependency = DateTime.MinValue;
+            reportContext.RequestedAsOfDateTime = new DateTime(2017, 11, 29, 00, 00, 00, DateTimeKind.Utc);
+            Assert.AreEqual(96, SampleDatabase.WorkflowContext.Runner.Build("WebServer", reportContext).RunAndDispose());
+            Assert.AreEqual(new DateTime(2017, 11, 29, 00, 00, 00, DateTimeKind.Utc), SampleDatabase.WorkflowContext.StreamProvider.LatestBeforeCutoff(LocationType.Table, "WebServer", CrawlType.Full, DateTime.UtcNow).WhenModifiedUtc);
+        }
+
+        [TestMethod]
         public void Database_RunAll()
         {
             SampleDatabase.EnsureBuilt();
@@ -209,7 +262,7 @@ namespace XForm.Test
             //XForm("build WebRequest.NullableHandling");
 
             // To debug engine execution, run like this:
-            PipelineParser.BuildPipeline("read WebRequest.BigServers.Direct", null, SampleDatabase.WorkflowContext).RunAndDispose();
+            PipelineParser.BuildPipeline("read WebServer.Big", null, SampleDatabase.WorkflowContext).RunAndDispose();
         }
 
         private static int ExpectedResult(string sourceName)

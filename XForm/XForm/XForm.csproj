@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="Aggregators\CountAggregator.cs" />
     <Compile Include="BackgroundWebServer.cs" />
+    <Compile Include="Commands\Read.cs" />
     <Compile Include="Commands\Function.cs" />
     <Compile Include="Commands\Functions\ConfluxFunctions.cs" />
     <Compile Include="Commands\String8Transform.cs" />
@@ -73,6 +74,7 @@
     <Compile Include="Extensions\InterfaceLoader.cs" />
     <Compile Include="HttpService.cs" />
     <Compile Include="InteractiveRunner.cs" />
+    <Compile Include="IO\ConcatenatingReader.cs" />
     <Compile Include="IO\DirectoryIO.cs" />
     <Compile Include="IO\StreamProvider\DeflateStreamProvider.cs" />
     <Compile Include="IO\StreamProvider\IStreamProvider.cs" />
@@ -92,6 +94,7 @@
     <Compile Include="Query\PipelineParser.cs" />
     <Compile Include="Commands\RemoveColumns.cs" />
     <Compile Include="Commands\SelectColumns.cs" />
+    <Compile Include="Query\PipelineScanner.cs" />
     <Compile Include="Query\QuerySuggester.cs" />
     <Compile Include="Types\ComparableComparer.cs" />
     <Compile Include="Types\IDataBatchComparer.cs" />
