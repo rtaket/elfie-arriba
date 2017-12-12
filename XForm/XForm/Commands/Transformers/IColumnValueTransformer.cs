@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis.Elfie.Model.Strings;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,6 @@ namespace XForm.Commands.Transformers
 {
     public interface IColumnValueTransformer
     {
-        DataBatch Transform(DataBatch batch);
+        DataBatch Transform(DataBatch batch, string[] arguments);
     }
 }

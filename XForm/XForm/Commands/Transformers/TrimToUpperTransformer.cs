@@ -13,7 +13,7 @@ namespace XForm.Commands.Transformers
     {
         String8[] _transformedArray;
 
-        public DataBatch Transform(DataBatch batch)
+        public DataBatch Transform(DataBatch batch, string[] arguments)
         {
             Allocator.AllocateToSize(ref _transformedArray, batch.Count);
 

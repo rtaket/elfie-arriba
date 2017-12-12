@@ -17,7 +17,7 @@ namespace XForm.Commands
     internal class String8TransformCommandBuilder : IPipelineStageBuilder
     {
         public IEnumerable<string> Verbs => new string[] { "string8transform" };
-        public string Usage => "'string8transform' <TransformName> <ColumnName> <ConvertedColumnName>";
+        public string Usage => "'string8transform' <TransformName> <ResultColumnName> <ColumnName> [argument] [argument] [...]";
 
         public IDataBatchEnumerator Build(IDataBatchEnumerator source, WorkflowContext context)
         {
@@ -37,10 +37,16 @@ namespace XForm.Commands
                 throw new InvalidOperationException("Unknown transformer: " + transformName);
             }
 
-            string sourceColumnName = context.Parser.NextColumnName(source);
             string destinationColumnName = context.Parser.NextString();
+            string sourceColumnName = context.Parser.NextColumnName(source);
 
-            return new String8Transform(source, transformer, sourceColumnName, destinationColumnName);
+            List<string> arguments = new List<string>();
+            while (context.Parser.HasAnotherPart)
+            {
+                arguments.Add(context.Parser.NextString());
+            }
+
+            return new String8Transform(source, transformer, sourceColumnName, arguments.ToArray(), destinationColumnName);
         }
     }
 
@@ -49,13 +55,15 @@ namespace XForm.Commands
         private int _sourceColumnIndex;
         private int _destinationColumnIndex;
         private List<ColumnDetails> _updatedColumnList;
+        private string[] _arguments;
         private IColumnValueTransformer _transformer;
 
         public override IReadOnlyList<ColumnDetails> Columns => _updatedColumnList;
 
-        public String8Transform(IDataBatchEnumerator source, IColumnValueTransformer transformer, string sourceColumnName, string destinationColumnName) : base(source)
+        public String8Transform(IDataBatchEnumerator source, IColumnValueTransformer transformer, string sourceColumnName, string[] arguments, string destinationColumnName) : base(source)
         {
             _sourceColumnIndex = source.Columns.IndexOfColumn(sourceColumnName);
+            _arguments = arguments;
 
             _transformer = transformer;
             _updatedColumnList = new List<ColumnDetails>(source.Columns);
@@ -79,7 +87,7 @@ namespace XForm.Commands
             // Cache the function to get the source data
             Func<DataBatch> sourceGetter = _source.ColumnGetter(_sourceColumnIndex);
 
-            return () => _transformer.Transform(sourceGetter());
+            return () => _transformer.Transform(sourceGetter(), _arguments);
         }
     }
 }
