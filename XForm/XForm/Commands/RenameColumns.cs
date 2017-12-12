@@ -11,7 +11,7 @@ namespace XForm.Commands
 {
     internal class RenameColumnsCommandBuilder : IPipelineStageBuilder
     {
-        public IEnumerable<string> Verbs => new string[] { "renameColumns" };
+        public string Verb => "renameColumns";
         public string Usage => "'renameColumns' [ColumnName] [NewColumnName], [ColumnName] [NewColumnName], ...";
 
         public IDataBatchEnumerator Build(IDataBatchEnumerator source, WorkflowContext context)
@@ -19,7 +19,7 @@ namespace XForm.Commands
             Dictionary<string, string> columnNameMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             while (context.Parser.HasAnotherPart)
             {
-                columnNameMappings[context.Parser.NextColumnName(source)] = context.Parser.NextString();
+                columnNameMappings[context.Parser.NextColumnName(source)] = context.Parser.NextOutputColumnName(source);
             }
 
             return new RenameColumns(source, columnNameMappings);

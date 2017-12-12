@@ -23,7 +23,7 @@ namespace XForm.Test.Query
             if (s_SampleReader == null)
             {
                 SampleDatabase.EnsureBuilt();
-                s_SampleReader = PipelineParser.BuildPipeline(@"
+                s_SampleReader = XqlParser.Parse(@"
                 read WebRequest
                 cache all
                 ", null, SampleDatabase.WorkflowContext);
@@ -44,7 +44,7 @@ namespace XForm.Test.Query
             {
                 pipeline = SampleReader();
                 innerValidator = new DataBatchEnumeratorContractValidator(pipeline);
-                pipeline = PipelineParser.BuildStage(configurationLine, innerValidator, SampleDatabase.WorkflowContext);
+                pipeline = XqlParser.Parse(configurationLine, innerValidator, SampleDatabase.WorkflowContext);
 
                 // Run without requesting any columns. Validate.
                 Assert.AreEqual(requiredColumnCount, innerValidator.ColumnGettersRequested.Count);
@@ -54,7 +54,7 @@ namespace XForm.Test.Query
 
                 // Reset; Request all columns. Validate.
                 pipeline.Reset();
-                pipeline = PipelineParser.BuildStage("write \"Sample.output.csv\"", pipeline, SampleDatabase.WorkflowContext);
+                pipeline = XqlParser.Parse("write \"Sample.output.csv\"", pipeline, SampleDatabase.WorkflowContext);
                 actualRowCount = pipeline.Run();
             }
             finally
@@ -75,29 +75,37 @@ namespace XForm.Test.Query
         [TestMethod]
         public void DataSourceEnumerator_EndToEnd()
         {
-            DataSourceEnumerator_All("columns ID EventTime ServerPort HttpStatus ClientOs WasCachedResponse", 1000);
+            DataSourceEnumerator_All("columns [ID] [EventTime] [ServerPort] [HttpStatus] [ClientOs] [WasCachedResponse]", 1000);
             DataSourceEnumerator_All("limit 10", 10);
             DataSourceEnumerator_All("count", 1);
-            DataSourceEnumerator_All("where ServerPort = 80", 423, new string[] { "ServerPort" });
-            DataSourceEnumerator_All("cast EventTime DateTime", 1000);
-            DataSourceEnumerator_All("removecolumns EventTime", 1000);
-            DataSourceEnumerator_All("renamecolumns ServerPort PortNumber, HttpStatus HttpResult", 1000);
+            DataSourceEnumerator_All("where [ServerPort] = 80", 423, new string[] { "ServerPort" });
+            DataSourceEnumerator_All("cast [EventTime] DateTime", 1000);
+            DataSourceEnumerator_All("removecolumns [EventTime]", 1000);
+            DataSourceEnumerator_All("renamecolumns [ServerPort] [PortNumber], [HttpStatus] [HttpResult]", 1000);
         }
 
         [TestMethod]
         public void DataSourceEnumerator_Errors()
         {
-            Verify.Exception<UsageException>(() => PipelineParser.BuildStage("read", null, SampleDatabase.WorkflowContext));
-            Verify.Exception<UsageException>(() => PipelineParser.BuildStage("read NotFound.csv", null, SampleDatabase.WorkflowContext));
-            Verify.Exception<UsageException>(() => PipelineParser.BuildPipeline(@"
+            Verify.Exception<UsageException>(() => XqlParser.Parse("read", null, SampleDatabase.WorkflowContext));
+            Verify.Exception<UsageException>(() => XqlParser.Parse("read NotFound.csv", null, SampleDatabase.WorkflowContext));
+            Verify.Exception<UsageException>(() => XqlParser.Parse(@"
                 read WebRequest
-                removeColumns NotFound", null, SampleDatabase.WorkflowContext));
+                removeColumns [NotFound]", null, SampleDatabase.WorkflowContext));
+
+            // Column name not in braces
+            Verify.Exception<UsageException>(() => XqlParser.Parse(@"
+                read WebRequest
+                where ""EventTime"" < ""2017-12-04""", null, SampleDatabase.WorkflowContext));
+
+            // String value in braces
+            Verify.Exception<UsageException>(() => XqlParser.Parse(@"read [WebRequest]", null, SampleDatabase.WorkflowContext));
 
             // Verify casting a type to itself doesn't error
-            PipelineParser.BuildPipeline(@"
+            XqlParser.Parse(@"
                 read WebRequest
-                cast EventTime DateTime
-                cast EventTime DateTime",
+                cast [EventTime] DateTime
+                cast [EventTime] DateTime",
                 null,
                 SampleDatabase.WorkflowContext).RunAndDispose();
         }

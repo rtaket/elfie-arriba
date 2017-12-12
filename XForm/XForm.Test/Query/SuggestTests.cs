@@ -14,9 +14,9 @@ namespace XForm.Test.Query
     [TestClass]
     public class SuggestTests
     {
-        private static string s_verbs = string.Join("|", PipelineParser.SupportedVerbs.OrderBy((s) => s));
+        private static string s_verbs = string.Join("|", XqlParser.SupportedVerbs.OrderBy((s) => s));
         private static string s_sources = string.Join("|", SampleDatabase.WorkflowContext.Runner.SourceNames.OrderBy((s) => s));
-        private static string s_webRequestColumns = string.Join("|", PipelineParser.BuildPipeline(@"
+        private static string s_webRequestColumns = string.Join("|", XqlParser.Parse(@"
             read WebRequest
             schema", null, SampleDatabase.WorkflowContext).ToList<string>("Name").OrderBy((s) => s));
 
@@ -35,11 +35,11 @@ namespace XForm.Test.Query
 
             Assert.AreEqual("!=|<|<=|<>|=|==|>|>=", Values(suggester.Suggest($@"
                 read WebRequest
-                where HttpStatus !")));
+                where [HttpStatus] !")));
 
             Assert.AreEqual("", Values(suggester.Suggest($@"
                 read WebRequest
-                where HttpStatus != ")));
+                where [HttpStatus] != ")));
 
             Assert.AreEqual(s_webRequestColumns, Values(suggester.Suggest($@"
                 read WebRequest
@@ -57,7 +57,7 @@ namespace XForm.Test.Query
 
             Assert.AreEqual(false, result.IsValid);
             Assert.AreEqual("UsageError.WebRequest.MissingColumn", result.Usage.TableName);
-            Assert.AreEqual("where BadColumnName != \"\"", result.Usage.QueryLine);
+            Assert.AreEqual(2, result.Usage.QueryLineNumber);
             Assert.AreEqual("'where' [columnName] [operator] [value]", result.Usage.Usage);
             Assert.AreEqual("BadColumnName", result.Usage.InvalidValue);
             Assert.AreEqual("columnName", result.Usage.InvalidValueCategory);
