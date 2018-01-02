@@ -1,6 +1,10 @@
-﻿using System;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using XForm.Data;
 using XForm.Extensions;
 
@@ -15,13 +19,12 @@ namespace XForm.IO
         private IDataBatchEnumerator[] _sources;
         private List<ColumnDetails> _columns;
         private int _currentSourceIndex;
-        private int _currentBatchRowCount;
 
         public ConcatenatingReader(IEnumerable<IDataBatchEnumerator> sources)
         {
-            this._sources = sources.ToArray();
-            this._columns = new List<ColumnDetails>();
-            this._currentSourceIndex = 0;
+            _sources = sources.ToArray();
+            _columns = new List<ColumnDetails>();
+            _currentSourceIndex = 0;
 
             IdentifyColumns();
         }
@@ -30,12 +33,12 @@ namespace XForm.IO
         {
             // Find the union of all columns. Ensure the names match
             Dictionary<string, ColumnDetails> columns = new Dictionary<string, ColumnDetails>(StringComparer.OrdinalIgnoreCase);
-            foreach (IDataBatchEnumerator source in this._sources)
+            foreach (IDataBatchEnumerator source in _sources)
             {
-                foreach(ColumnDetails column in source.Columns)
+                foreach (ColumnDetails column in source.Columns)
                 {
                     ColumnDetails existingColumn;
-                    if(columns.TryGetValue(column.Name, out existingColumn))
+                    if (columns.TryGetValue(column.Name, out existingColumn))
                     {
                         if (!column.Equals(existingColumn))
                         {
@@ -52,6 +55,7 @@ namespace XForm.IO
         }
 
         public IReadOnlyList<ColumnDetails> Columns => _columns;
+        public int CurrentBatchRowCount { get; private set; }
 
         public Func<DataBatch> ColumnGetter(int columnIndex)
         {
@@ -60,7 +64,7 @@ namespace XForm.IO
             Array nullArray = Allocator.AllocateArray(column.Type, 1);
 
             // Get and cache the corresponding column getter from each source (null if the source doesn't have that column)
-            for(int i = 0; i < _sources.Length; ++i)
+            for (int i = 0; i < _sources.Length; ++i)
             {
                 int sourceColumnIndex;
                 if (_sources[i].Columns.TryGetIndexOfColumn(column.Name, out sourceColumnIndex)) gettersPerSource[i] = _sources[i].ColumnGetter(sourceColumnIndex);
@@ -73,7 +77,7 @@ namespace XForm.IO
                 Func<DataBatch> getter = gettersPerSource[_currentSourceIndex];
 
                 // If this source didn't have the column, return all null
-                if (getter == null) return DataBatch.Null(nullArray, _currentBatchRowCount);
+                if (getter == null) return DataBatch.Null(nullArray, CurrentBatchRowCount);
 
                 // Otherwise, return the current batch
                 return getter();
@@ -82,13 +86,13 @@ namespace XForm.IO
 
         public int Next(int desiredCount)
         {
-            while(_currentSourceIndex < _sources.Length)
+            while (_currentSourceIndex < _sources.Length)
             {
                 // Try to get rows from the next source
-                _currentBatchRowCount = _sources[_currentSourceIndex].Next(desiredCount);
+                CurrentBatchRowCount = _sources[_currentSourceIndex].Next(desiredCount);
 
                 // If it had rows left, return them
-                if (_currentBatchRowCount > 0) return _currentBatchRowCount;
+                if (CurrentBatchRowCount > 0) return CurrentBatchRowCount;
 
                 // If not, try the next source
                 _currentSourceIndex++;
@@ -102,7 +106,7 @@ namespace XForm.IO
         {
             _currentSourceIndex = 0;
 
-            foreach(IDataBatchEnumerator source in this._sources)
+            foreach (IDataBatchEnumerator source in _sources)
             {
                 source.Reset();
             }
@@ -110,14 +114,14 @@ namespace XForm.IO
 
         public void Dispose()
         {
-            if(this._sources != null)
+            if (_sources != null)
             {
-                foreach(IDataBatchEnumerator source in this._sources)
+                foreach (IDataBatchEnumerator source in _sources)
                 {
                     if (source != null) source.Dispose();
                 }
 
-                this._sources = null;
+                _sources = null;
             }
         }
     }

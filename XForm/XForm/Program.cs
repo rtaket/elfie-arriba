@@ -33,7 +33,7 @@ namespace XForm
             {
                 if (args == null || args.Length == 0)
                 {
-                    return new InteractiveRunner(context).Run();
+                    return (int)new InteractiveRunner(context).Run();
                 }
 
                 string command = args[0].ToLowerInvariant();
@@ -41,7 +41,7 @@ namespace XForm
                 {
                     case "run":
                         if (args.Length < 2) throw new UsageException("'run' [QueryFilePath]");
-                        return RunFileQuery(args[1], context);
+                        return (int)RunFileQuery(args[1], context);
                     case "add":
                         if (args.Length < 3) throw new UsageException("'add' [SourceFileOrDirectory] [AsSourceName] [Full|Incremental?] [AsOfDateTimeUtc?]");
 
@@ -63,6 +63,9 @@ namespace XForm
                         return 0;
                     case "http":
                         new HttpService(context).Run();
+                        return 0;
+                    case "perf":
+                        new PerformanceComparisons().Run();
                         return 0;
                     default:
                         throw new UsageException($"Unknown XForm mode '{command}'.");
@@ -106,16 +109,16 @@ namespace XForm
             return result;
         }
 
-        private static int RunFileQuery(string queryFilePath, WorkflowContext context)
+        private static long RunFileQuery(string queryFilePath, WorkflowContext context)
         {
             string query = File.ReadAllText(queryFilePath);
 
-            int rowsWritten = 0;
+            long rowsWritten = 0;
             using (new TraceWatch(query))
             {
                 using (IDataBatchEnumerator source = XqlParser.Parse(query, null, context))
                 {
-                    rowsWritten = source.Run();
+                    rowsWritten = source.RunWithoutDispose();
                 }
             }
 

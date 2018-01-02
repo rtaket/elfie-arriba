@@ -6,44 +6,42 @@ using System.Collections.Generic;
 
 using XForm.Data;
 using XForm.Extensions;
-using XForm.Functions;
 using XForm.Query;
 
 namespace XForm.Commands
 {
-    internal class CalculateCommandBuilder : IPipelineStageBuilder
+    internal class SetCommandBuilder : IPipelineStageBuilder
     {
-        public string Verb => "calculate";
-        public string Usage => "'calculate' [newColumnName] functionName([args])";
+        public string Verb => "set";
+        public string Usage => "'set' [newColumnName] [ColumnFunctionOrLiteral]";
 
         public IDataBatchEnumerator Build(IDataBatchEnumerator source, WorkflowContext context)
         {
-            return new Calculate(source,
+            return new Set(source,
                 context.Parser.NextOutputColumnName(source),
-                context);
+                context.Parser.NextColumn(source, context));
         }
     }
 
-    public class Calculate : DataBatchEnumeratorWrapper
+    public class Set : DataBatchEnumeratorWrapper
     {
         private int _computedColumnIndex;
-        private IDataBatchFunction _function;
+        private IDataBatchColumn _calculatedColumn;
         private List<ColumnDetails> _columns;
-        private int _currentCount;
 
-        public Calculate(IDataBatchEnumerator source, string outputColumnName, WorkflowContext context) : base(source)
+        public Set(IDataBatchEnumerator source, string outputColumnName, IDataBatchColumn column) : base(source)
         {
-            _function = context.Parser.NextFunction(source, context);
+            _calculatedColumn = column;
             _columns = new List<ColumnDetails>(source.Columns);
 
             // Determine whether we're replacing or adding a column
             if (source.Columns.TryGetIndexOfColumn(outputColumnName, out _computedColumnIndex))
             {
-                _columns[_computedColumnIndex] = _function.ReturnType.Rename(outputColumnName);
+                _columns[_computedColumnIndex] = _calculatedColumn.ColumnDetails.Rename(outputColumnName);
             }
             else
             {
-                _columns.Add(_function.ReturnType.Rename(outputColumnName));
+                _columns.Add(_calculatedColumn.ColumnDetails.Rename(outputColumnName));
                 _computedColumnIndex = source.Columns.Count;
             }
         }
@@ -56,14 +54,7 @@ namespace XForm.Commands
             if (columnIndex != _computedColumnIndex) return _source.ColumnGetter(columnIndex);
 
             // Otherwise, pass on the calculation
-            Func<int, DataBatch> getter = _function.Getter();
-            return () => getter(_currentCount);
-        }
-
-        public override int Next(int desiredCount)
-        {
-            _currentCount = base.Next(desiredCount);
-            return _currentCount;
+            return _calculatedColumn.Getter();
         }
     }
 }

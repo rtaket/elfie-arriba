@@ -9,6 +9,7 @@ using XForm.Data;
 using XForm.IO.StreamProvider;
 using XForm.Query;
 using XForm.Transforms;
+using XForm.Types.Comparers;
 
 namespace XForm.Types
 {
@@ -39,10 +40,20 @@ namespace XForm.Types
             return null;
         }
 
-        public Action<DataBatch, RowRemapper> TryGetComparer(CompareOperator op, object value)
+        public Action<DataBatch, DataBatch, RowRemapper> TryGetComparer(CompareOperator op)
         {
-            if (typeof(T) == typeof(int)) return new IntComparer().TryBuild(op, value);
-            return new ComparableComparer<T>().TryBuild(op, value);
+            if (typeof(T) == typeof(sbyte)) return new SbyteComparer().TryBuild(op);
+            if (typeof(T) == typeof(byte)) return new ByteComparer().TryBuild(op);
+            if (typeof(T) == typeof(short)) return new ShortComparer().TryBuild(op);
+            if (typeof(T) == typeof(ushort)) return new UshortComparer().TryBuild(op);
+            if (typeof(T) == typeof(int)) return new IntComparer().TryBuild(op);
+            if (typeof(T) == typeof(uint)) return new UintComparer().TryBuild(op);
+            if (typeof(T) == typeof(long)) return new LongComparer().TryBuild(op);
+            if (typeof(T) == typeof(ulong)) return new UlongComparer().TryBuild(op);
+            if (typeof(T) == typeof(float)) return new FloatComparer().TryBuild(op);
+            if (typeof(T) == typeof(double)) return new DoubleComparer().TryBuild(op);
+
+            return new ComparableComparer<T>().TryBuild(op);
         }
 
         public static string ValuesFilePath(string columnPath)
@@ -154,83 +165,6 @@ namespace XForm.Types
             {
                 _stream.Dispose();
                 _stream = null;
-            }
-        }
-    }
-
-    internal class IntComparer : IDataBatchComparer
-    {
-        public Type Type => typeof(int);
-        public int Value;
-
-        public void SetValue(object value)
-        {
-            Value = (int)value;
-        }
-
-        public void WhereEquals(DataBatch source, RowRemapper result)
-        {
-            result.ClearAndSize(source.Count);
-            int[] sourceArray = (int[])source.Array;
-            for (int i = 0; i < source.Count; ++i)
-            {
-                int realIndex = source.Index(i);
-                if (Value == sourceArray[realIndex]) result.Add(i);
-            }
-        }
-
-        public void WhereNotEquals(DataBatch source, RowRemapper result)
-        {
-            result.ClearAndSize(source.Count);
-            int[] sourceArray = (int[])source.Array;
-            for (int i = 0; i < source.Count; ++i)
-            {
-                int realIndex = source.Index(i);
-                if (Value != sourceArray[realIndex]) result.Add(i);
-            }
-        }
-
-        public void WhereLessThan(DataBatch source, RowRemapper result)
-        {
-            result.ClearAndSize(source.Count);
-            int[] sourceArray = (int[])source.Array;
-            for (int i = 0; i < source.Count; ++i)
-            {
-                int realIndex = source.Index(i);
-                if (Value > sourceArray[realIndex]) result.Add(i);
-            }
-        }
-
-        public void WhereLessThanOrEquals(DataBatch source, RowRemapper result)
-        {
-            result.ClearAndSize(source.Count);
-            int[] sourceArray = (int[])source.Array;
-            for (int i = 0; i < source.Count; ++i)
-            {
-                int realIndex = source.Index(i);
-                if (Value >= sourceArray[realIndex]) result.Add(i);
-            }
-        }
-
-        public void WhereGreaterThan(DataBatch source, RowRemapper result)
-        {
-            result.ClearAndSize(source.Count);
-            int[] sourceArray = (int[])source.Array;
-            for (int i = 0; i < source.Count; ++i)
-            {
-                int realIndex = source.Index(i);
-                if (Value < sourceArray[realIndex]) result.Add(i);
-            }
-        }
-
-        public void WhereGreaterThanOrEquals(DataBatch source, RowRemapper result)
-        {
-            result.ClearAndSize(source.Count);
-            int[] sourceArray = (int[])source.Array;
-            for (int i = 0; i < source.Count; ++i)
-            {
-                int realIndex = source.Index(i);
-                if (Value <= sourceArray[realIndex]) result.Add(i);
             }
         }
     }

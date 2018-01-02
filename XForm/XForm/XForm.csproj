@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -27,7 +27,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -37,7 +37,44 @@
     <StartupObject>
     </StartupObject>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\bin\x64\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>..\bin\x64\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
@@ -51,9 +88,10 @@
   <ItemGroup>
     <Compile Include="Aggregators\CountAggregator.cs" />
     <Compile Include="BackgroundWebServer.cs" />
-    <Compile Include="Commands\Calculate.cs" />
+    <Compile Include="Commands\Cast.cs" />
+    <Compile Include="Commands\Rename.cs" />
+    <Compile Include="Commands\Set.cs" />
     <Compile Include="Commands\Read.cs" />
-    <Compile Include="Commands\RenameColumns.cs" />
     <Compile Include="Context\IWorkflowRunner.cs" />
     <Compile Include="Context\SingleFileRunner.cs" />
     <Compile Include="Data\Allocator.cs" />
@@ -62,16 +100,25 @@
     <Compile Include="Data\DataBatch.cs" />
     <Compile Include="Data\DataBatchEnumeratorWrapper.cs" />
     <Compile Include="Data\IDataBatchEnumerator.cs" />
+    <Compile Include="Data\BitVector.cs" />
     <Compile Include="Data\MemoryCacher.cs" />
     <Compile Include="Data\SinglePageEnumerator.cs" />
+    <Compile Include="Data\XFormTable.cs" />
     <Compile Include="Extensions\DataBatchEnumeratorExtensions.cs" />
     <Compile Include="Extensions\IComparableExtensions.cs" />
     <Compile Include="Extensions\InterfaceLoader.cs" />
     <Compile Include="Functions\AsOfDate.cs" />
+    <Compile Include="Functions\Cast.cs" />
+    <Compile Include="Functions\Date\DateAdd.cs" />
+    <Compile Include="Functions\Rename.cs" />
+    <Compile Include="Functions\Column.cs" />
+    <Compile Include="Functions\Constant.cs" />
     <Compile Include="Functions\FunctionFactory.cs" />
-    <Compile Include="Functions\IDataBatchFunction.cs" />
+    <Compile Include="Data\IDataBatchColumn.cs" />
     <Compile Include="Functions\IFunctionBuilder.cs" />
-    <Compile Include="Functions\ToUpper.cs" />
+    <Compile Include="Functions\SimpleTransformFunction.cs" />
+    <Compile Include="Functions\String\Trim.cs" />
+    <Compile Include="Functions\String\ToUpper.cs" />
     <Compile Include="HttpService.cs" />
     <Compile Include="InteractiveRunner.cs" />
     <Compile Include="IO\ConcatenatingReader.cs" />
@@ -83,20 +130,35 @@
     <Compile Include="IO\SchemaSerializer.cs" />
     <Compile Include="Extensions\StreamProviderExtensions.cs" />
     <Compile Include="IO\StreamProvider\MultipleSourceStreamProvider.cs" />
+    <Compile Include="NativeAccelerator.cs" />
+    <Compile Include="PerformanceComparisons.cs" />
     <Compile Include="Query\IPipelineStageBuilder.cs" />
+    <Compile Include="Query\IUsage.cs" />
     <Compile Include="Query\Operator.cs" />
     <Compile Include="Extensions\ColumnsExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="IO\ArrayEnumerator.cs" />
+    <Compile Include="IO\ArrayTable.cs" />
     <Compile Include="IO\BinaryTableReader.cs" />
+    <Compile Include="Query\UsageException.cs" />
     <Compile Include="Query\XqlParser.cs" />
-    <Compile Include="Commands\RemoveColumns.cs" />
-    <Compile Include="Commands\SelectColumns.cs" />
+    <Compile Include="Commands\Remove.cs" />
+    <Compile Include="Commands\Select.cs" />
     <Compile Include="Query\XqlScanner.cs" />
     <Compile Include="Query\QuerySuggester.cs" />
-    <Compile Include="Types\ComparableComparer.cs" />
+    <Compile Include="Test\Benchmarker.cs" />
+    <Compile Include="Types\Comparers\ComparableComparer.cs" />
+    <Compile Include="Types\Comparers\DoubleComparer.cs" />
+    <Compile Include="Types\Comparers\FloatComparer.cs" />
+    <Compile Include="Types\Comparers\LongComparer.cs" />
+    <Compile Include="Types\Comparers\ByteComparer.cs" />
+    <Compile Include="Types\Comparers\IntComparer.cs" />
+    <Compile Include="Types\Comparers\SbyteComparer.cs" />
+    <Compile Include="Types\Comparers\ShortComparer.cs" />
+    <Compile Include="Types\Comparers\UintComparer.cs" />
+    <Compile Include="Types\Comparers\UlongComparer.cs" />
+    <Compile Include="Types\Comparers\UshortComparer.cs" />
     <Compile Include="Types\IDataBatchComparer.cs" />
     <Compile Include="Types\Nullable.cs" />
     <Compile Include="Types\TypeConverterFactory.cs" />
@@ -105,7 +167,6 @@
     <Compile Include="Data\RowRemapper.cs" />
     <Compile Include="IO\TabularFileReader.cs" />
     <Compile Include="Commands\Schema.cs" />
-    <Compile Include="Commands\Cast.cs" />
     <Compile Include="Commands\Where.cs" />
     <Compile Include="IO\BinaryTableWriter.cs" />
     <Compile Include="IO\TabularFileWriter.cs" />

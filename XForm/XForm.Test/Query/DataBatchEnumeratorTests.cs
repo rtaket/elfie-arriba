@@ -1,15 +1,12 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.IO;
-
 using Elfie.Test;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using XForm.Data;
 using XForm.Extensions;
-using XForm.IO;
 using XForm.Query;
 
 namespace XForm.Test.Query
@@ -36,7 +33,7 @@ namespace XForm.Test.Query
         public static void DataSourceEnumerator_All(string configurationLine, int expectedRowCount, string[] requiredColumns = null)
         {
             int requiredColumnCount = (requiredColumns == null ? 0 : requiredColumns.Length);
-            int actualRowCount;
+            long actualRowCount;
 
             IDataBatchEnumerator pipeline = null;
             DataBatchEnumeratorContractValidator innerValidator = null;
@@ -48,14 +45,14 @@ namespace XForm.Test.Query
 
                 // Run without requesting any columns. Validate.
                 Assert.AreEqual(requiredColumnCount, innerValidator.ColumnGettersRequested.Count);
-                actualRowCount = pipeline.Run();
+                actualRowCount = pipeline.RunWithoutDispose();
                 Assert.AreEqual(expectedRowCount, actualRowCount, "DataSourceEnumerator should return correct count with no requested columns.");
                 Assert.AreEqual(requiredColumnCount, innerValidator.ColumnGettersRequested.Count, "No extra columns requested after Run");
 
                 // Reset; Request all columns. Validate.
                 pipeline.Reset();
                 pipeline = XqlParser.Parse("write \"Sample.output.csv\"", pipeline, SampleDatabase.WorkflowContext);
-                actualRowCount = pipeline.Run();
+                actualRowCount = pipeline.RunWithoutDispose();
             }
             finally
             {
@@ -75,13 +72,13 @@ namespace XForm.Test.Query
         [TestMethod]
         public void DataSourceEnumerator_EndToEnd()
         {
-            DataSourceEnumerator_All("columns [ID] [EventTime] [ServerPort] [HttpStatus] [ClientOs] [WasCachedResponse]", 1000);
+            DataSourceEnumerator_All("select [ID] [EventTime] [ServerPort] [HttpStatus] [ClientOs] [WasCachedResponse]", 1000);
             DataSourceEnumerator_All("limit 10", 10);
             DataSourceEnumerator_All("count", 1);
             DataSourceEnumerator_All("where [ServerPort] = 80", 423, new string[] { "ServerPort" });
             DataSourceEnumerator_All("cast [EventTime] DateTime", 1000);
-            DataSourceEnumerator_All("removecolumns [EventTime]", 1000);
-            DataSourceEnumerator_All("renamecolumns [ServerPort] [PortNumber], [HttpStatus] [HttpResult]", 1000);
+            DataSourceEnumerator_All("remove [EventTime]", 1000);
+            DataSourceEnumerator_All("rename [ServerPort] [PortNumber], [HttpStatus] [HttpResult]", 1000);
         }
 
         [TestMethod]
@@ -91,12 +88,7 @@ namespace XForm.Test.Query
             Verify.Exception<UsageException>(() => XqlParser.Parse("read NotFound.csv", null, SampleDatabase.WorkflowContext));
             Verify.Exception<UsageException>(() => XqlParser.Parse(@"
                 read WebRequest
-                removeColumns [NotFound]", null, SampleDatabase.WorkflowContext));
-
-            // Column name not in braces
-            Verify.Exception<UsageException>(() => XqlParser.Parse(@"
-                read WebRequest
-                where ""EventTime"" < ""2017-12-04""", null, SampleDatabase.WorkflowContext));
+                remove [NotFound]", null, SampleDatabase.WorkflowContext));
 
             // String value in braces
             Verify.Exception<UsageException>(() => XqlParser.Parse(@"read [WebRequest]", null, SampleDatabase.WorkflowContext));
@@ -104,8 +96,7 @@ namespace XForm.Test.Query
             // Verify casting a type to itself doesn't error
             XqlParser.Parse(@"
                 read WebRequest
-                cast [EventTime] DateTime
-                cast [EventTime] DateTime",
+                select Cast(Cast([EventTime], DateTime), DateTime)",
                 null,
                 SampleDatabase.WorkflowContext).RunAndDispose();
         }

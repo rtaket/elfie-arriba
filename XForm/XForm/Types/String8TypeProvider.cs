@@ -7,10 +7,10 @@ using System.IO;
 using Microsoft.CodeAnalysis.Elfie.Model.Strings;
 
 using XForm.Data;
-using XForm.IO;
 using XForm.IO.StreamProvider;
 using XForm.Query;
 using XForm.Transforms;
+using XForm.Types.Comparers;
 
 namespace XForm.Types
 {
@@ -29,9 +29,9 @@ namespace XForm.Types
             return new String8ColumnWriter(streamProvider, columnPath);
         }
 
-        public Action<DataBatch, RowRemapper> TryGetComparer(CompareOperator op, object value)
+        public Action<DataBatch, DataBatch, RowRemapper> TryGetComparer(CompareOperator op)
         {
-            return new ComparableComparer<String8>().TryBuild(op, value);
+            return new ComparableComparer<String8>().TryBuild(op);
         }
 
         public Func<DataBatch, DataBatch> TryGetConverter(Type sourceType, Type targetType, object defaultValue, bool strict)

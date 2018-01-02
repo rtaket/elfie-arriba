@@ -9,13 +9,14 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 
+using Elfie.Test;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using XForm.Extensions;
 using XForm.IO;
 using XForm.IO.StreamProvider;
 using XForm.Query;
-using Elfie.Test;
 
 namespace XForm.Test
 {
@@ -90,14 +91,14 @@ namespace XForm.Test
             if (context == null)
             {
                 context = SampleDatabase.WorkflowContext;
-                
+
                 // Ensure the as-of DateTime is reset for each operation
                 context.RequestedAsOfDateTime = DateTime.UtcNow;
             }
 
             List<string> args = new List<string>();
             XqlScanner scanner = new XqlScanner(xformCommand);
-            while(scanner.Current.Type != TokenType.End)
+            while (scanner.Current.Type != TokenType.End)
             {
                 if (scanner.Current.Type == TokenType.Newline) break;
                 args.Add(scanner.Current.Value);
@@ -115,7 +116,10 @@ namespace XForm.Test
 
             XqlParser.Parse(@"
                 read WebRequest
-                calculate [ClientOsUpper] ToUpper([ClientOs])", null, SampleDatabase.WorkflowContext).RunAndDispose();
+                set [ClientOsUpper] Trim(ToUpper([ClientOs]))
+                set [Sample] ToUpper(Trim(""  Sample  ""))
+                assert none
+                    where [Sample] != ""SAMPLE""", null, SampleDatabase.WorkflowContext).RunAndDispose();
         }
 
         [TestMethod]
@@ -196,7 +200,7 @@ namespace XForm.Test
             SampleDatabase.EnsureBuilt();
 
             // Make a branch of the database in "Database.Branched"
-            string branchedFolder = Path.Combine(s_RootPath, @"..\Database.Branched");            
+            string branchedFolder = Path.Combine(s_RootPath, @"..\Database.Branched");
             IStreamProvider branchedStreamProvider = new LocalFileStreamProvider(branchedFolder);
             branchedStreamProvider.Delete(".");
 
@@ -283,7 +287,7 @@ namespace XForm.Test
             //XForm("build WebRequest.NullableHandling");
 
             // To debug engine execution, run like this:
-            XqlParser.Parse("read WebServer.Big", null, SampleDatabase.WorkflowContext).RunAndDispose();
+            XqlParser.Parse("read WebRequest.NullableHandling", null, SampleDatabase.WorkflowContext).RunAndDispose();
         }
 
         private static int ExpectedResult(string sourceName)

@@ -34,8 +34,8 @@ namespace XForm.Test
         private SinglePageEnumerator _singlePageSource;
         private IDataBatchEnumerator _assertPipeline;
 
-        private int _sourceRowsTotal;
-        private int _assertRowsTotal;
+        private long _sourceRowsTotal;
+        private long _assertRowsTotal;
 
         public AssertCommand(IDataBatchEnumerator source, AssertType type, WorkflowContext context) : base(source)
         {
@@ -55,12 +55,12 @@ namespace XForm.Test
                 _sourceRowsTotal += count;
 
                 // Make the asserts run and count matching rows
-                _assertRowsTotal += _assertPipeline.Run();
+                _assertRowsTotal += _assertPipeline.RunWithoutDispose();
             }
             else
             {
                 // If we're done, validate the assert
-                int expectedCount = (_type == AssertType.All ? _sourceRowsTotal : 0);
+                long expectedCount = (_type == AssertType.All ? _sourceRowsTotal : 0);
                 Assert.AreEqual(expectedCount, _assertRowsTotal, "Pipeline Assert Failed");
             }
 

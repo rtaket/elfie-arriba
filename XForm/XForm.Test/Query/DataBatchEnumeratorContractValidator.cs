@@ -18,7 +18,7 @@ namespace XForm.Test.Query
         public List<string> ColumnGettersRequested;
         public bool NextCalled;
         public bool DisposeCalled;
-        public int CurrentBatchRowCount;
+        public int CurrentBatchRowCount { get; private set; }
 
         public DataBatchEnumeratorContractValidator(IDataBatchEnumerator inner)
         {
@@ -41,7 +41,6 @@ namespace XForm.Test.Query
             if (NextCalled) throw new AssertFailedException("Column Getters must all be requested before the first Next() call (so callees know what to retrieve).");
 
             string columnName = _inner.Columns[columnIndex].Name;
-            if (ColumnGettersRequested.Contains(columnName)) throw new AssertFailedException($"Column getters must only be requested once to avoid duplicate work. {columnName} getter re-requested.");
             ColumnGettersRequested.Add(columnName);
 
             Func<DataBatch> innerGetter = _inner.ColumnGetter(columnIndex);
@@ -71,6 +70,7 @@ namespace XForm.Test.Query
             NextCalled = true;
 
             CurrentBatchRowCount = _inner.Next(desiredCount);
+            Assert.AreEqual(CurrentBatchRowCount, _inner.CurrentBatchRowCount, $"Enumerator must return the same row count from Next {CurrentBatchRowCount:n0} that it saves in CurrentRowBatchCount {_inner.CurrentBatchRowCount:n0}.");
             return CurrentBatchRowCount;
         }
 

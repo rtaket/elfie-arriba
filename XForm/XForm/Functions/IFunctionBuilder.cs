@@ -1,4 +1,8 @@
-﻿using XForm.Data;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+using XForm.Data;
+using XForm.Query;
 
 namespace XForm.Functions
 {
@@ -6,7 +10,7 @@ namespace XForm.Functions
     ///  XForm contains named functions
     ///  Create an IPipelineStageBuilder and specify the verbs it supports to extend the language.
     /// </summary>
-    public interface IFunctionBuilder
+    public interface IFunctionBuilder : IUsage
     {
         /// <summary>
         ///  Function Name which this builder constructs.
@@ -19,6 +23,6 @@ namespace XForm.Functions
         /// <param name="source">IDataSourceEnumerator so far in this pipeline</param>
         /// <param name="context">WorkflowContext to read arguments, get logger, and so on</param>
         /// <returns>IDataBatchFunction as configured in query</returns>
-        IDataBatchFunction Build(IDataBatchEnumerator source, WorkflowContext context);
+        IDataBatchColumn Build(IDataBatchEnumerator source, WorkflowContext context);
     }
 }
