@@ -29,6 +29,11 @@ namespace XForm.Data
             this._bitVector = new ulong[((length + 63) >> 6)];
         }
 
+        public BitVector(ulong[] vector)
+        {
+            this._bitVector = vector;
+        }
+
         internal ulong[] Array => _bitVector;
 
         public bool this[int index]
@@ -219,6 +224,43 @@ namespace XForm.Data
             for (int i = 0; i < this._bitVector.Length; ++i)
             {
                 this._bitVector[i] &= ~other._bitVector[i];
+            }
+
+            return this;
+        }
+
+        public BitVector Set(bool[] other)
+        {
+            if (this.Capacity < other.Length) throw new InvalidOperationException();
+            this.None();
+
+            for (int i = 0; i < other.Length; ++i)
+            {
+                this[i] = other[i];
+            }
+
+            return this;
+        }
+
+        public BitVector And(bool[] other)
+        {
+            if (this.Capacity < other.Length) throw new InvalidOperationException();
+
+            for (int i = 0; i < other.Length; ++i)
+            {
+                this[i] &= other[i];
+            }
+
+            return this;
+        }
+
+        public BitVector Or(bool[] other)
+        {
+            if (this.Capacity < other.Length) throw new InvalidOperationException();
+
+            for (int i = 0; i < other.Length; ++i)
+            {
+                this[i] |= other[i];
             }
 
             return this;
