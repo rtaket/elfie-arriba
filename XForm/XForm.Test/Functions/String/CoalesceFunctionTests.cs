@@ -17,7 +17,6 @@ namespace XForm.Test.Functions.String
         public void Coalesce()
         {
             // Arrange
-
             String8[] transformedArray = null;
             bool[] nullArray = null;
 
